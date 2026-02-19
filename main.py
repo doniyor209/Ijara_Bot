@@ -16,15 +16,10 @@ from buttons import (
     uy_hovli_qavat_button, tamir_button, vosita_button,
     number_button, create_price_keyboard
 )
-from aiogram.client.session.aiohttp import AiohttpSession
-
-
-PROXY_URL = 'http://proxy.server:3128'
-session = AiohttpSession(proxy=PROXY_URL)
-bot = Bot(token=TOKEN, session=session)
 
 TOKEN = "7945234223:AAGyNAwRf1Rg8RTyQoxyrI5yV9DiUF_ovdA"
 
+bot = Bot(token=TOKEN)
 dp = Dispatcher()
 
 # Ma'lumotlar bazasini yaratish
@@ -162,8 +157,13 @@ async def my_ads(message: types.Message):
     conn = sqlite3.connect('ijara_bot.db')
     cursor = conn.cursor()
     
-    # TO'G'RILANGAN SQL SO'ROVI - bir qatorda
-    cursor.execute("SELECT ad_id, ad_type, tuman, narx, status, photo_id, created_date, muddat, kimga, xona, maydon, tamir, vosita, telefon FROM ads WHERE user_id = ? ORDER BY created_date DESC", (user_id,))
+    cursor.execute("""
+        SELECT ad_id, ad_type, tuman, narx, status, photo_id, created_date, 
+               muddat, kimga, xona, maydon, tamir, vosita, telefon 
+        FROM ads 
+        WHERE user_id = ? 
+        ORDER BY created_date DESC
+    """, (user_id,))
     
     ads = cursor.fetchall()
     conn.close()
@@ -194,7 +194,8 @@ async def my_ads(message: types.Message):
     )
     
     for i, ad in enumerate(ads, 1):
-        ad_id, ad_type, tuman, narx, status, photo_id, created_date, muddat, kimga, xona, maydon, tamir, vosita, telefon = ad
+        (ad_id, ad_type, tuman, narx, status, photo_id, created_date, 
+         muddat, kimga, xona, maydon, tamir, vosita, telefon) = ad
         
         # Statusga qarab belgi
         status_icon = "✅" if status == "active" else "⏳"
@@ -232,7 +233,7 @@ async def my_ads(message: types.Message):
         )
         
         # Agar rasm bo'lsa, rasm bilan yuborish
-        if photo_id and photo_id != "None" and photo_id != "" and photo_id is not None:
+        if photo_id and photo_id not in ["None", "", None]:
             try:
                 await message.answer_photo(
                     photo=photo_id,
@@ -263,10 +264,7 @@ async def my_ads(message: types.Message):
     )
     
     # Faol e'lonlar sonini hisoblash
-    active_count = 0
-    for ad in ads:
-        if ad[4] == 'active':
-            active_count += 1
+    active_count = sum(1 for ad in ads if ad[4] == 'active')
     
     await message.answer(
         f"📊 **Jami:** {len(ads)} ta e'lon\n"
@@ -284,7 +282,6 @@ async def home_page(message: types.Message, state: FSMContext):
         reply_markup=user_menu
     )
 
-# Callback handlerlar
 @dp.callback_query()
 async def process_callback(callback_query: types.CallbackQuery, state: FSMContext):
     action = callback_query.data
@@ -310,7 +307,6 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
     elif action.startswith("delete_"):
         ad_id = action.replace("delete_", "")
         
-        # Confirm delete
         keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [
@@ -330,7 +326,6 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
     elif action.startswith("confirm_delete_"):
         ad_id = action.replace("confirm_delete_", "")
         
-        # E'lonni o'chirish
         conn = sqlite3.connect('ijara_bot.db')
         cursor = conn.cursor()
         cursor.execute("DELETE FROM ads WHERE ad_id = ? AND user_id = ?", (ad_id, user_id))
@@ -342,20 +337,15 @@ async def process_callback(callback_query: types.CallbackQuery, state: FSMContex
             parse_mode="Markdown"
         )
         
-        # E'lonlar ro'yxatini yangilash
         await my_ads(callback_query.message)
         await callback_query.answer()
         
     elif action == "cancel_delete":
-        await callback_query.message.answer(
-            "❌ O'chirish bekor qilindi"
-        )
+        await callback_query.message.answer("❌ O'chirish bekor qilindi")
         await callback_query.answer()
         
     elif action == "refresh_ads":
-        await callback_query.message.answer(
-            "🔄 E'lonlar yangilanmoqda..."
-        )
+        await callback_query.message.answer("🔄 E'lonlar yangilanmoqda...")
         await my_ads(callback_query.message)
         await callback_query.answer()
 
@@ -364,12 +354,16 @@ async def show_ad_details(message: types.Message, ad_id: str, user_id: int):
     conn = sqlite3.connect('ijara_bot.db')
     cursor = conn.cursor()
     
-    cursor.execute("SELECT ad_type, tuman, muddat, kimga, xona, maydon, tamir, narx, vosita, telefon, photo_id, status, created_date FROM ads WHERE ad_id = ? AND user_id = ?", (ad_id, user_id))
+    cursor.execute("""
+        SELECT ad_type, tuman, muddat, kimga, xona, maydon, tamir, narx, 
+               vosita, telefon, photo_id, status, created_date 
+        FROM ads 
+        WHERE ad_id = ? AND user_id = ?
+    """, (ad_id, user_id))
     
     ad = cursor.fetchone()
     
     if ad:
-        # Ko'rishlar sonini yangilash
         cursor.execute("UPDATE ads SET views_count = views_count + 1 WHERE ad_id = ?", (ad_id,))
         conn.commit()
     
@@ -379,7 +373,8 @@ async def show_ad_details(message: types.Message, ad_id: str, user_id: int):
         await message.answer("❌ E'lon topilmadi")
         return
     
-    ad_type, tuman, muddat, kimga, xona, maydon, tamir, narx, vosita, telefon, photo_id, status, created_date = ad
+    (ad_type, tuman, muddat, kimga, xona, maydon, tamir, narx, 
+     vosita, telefon, photo_id, status, created_date) = ad
     
     status_text = "✅ Faol" if status == "active" else "⏳ Kutishda"
     
@@ -411,7 +406,7 @@ async def show_ad_details(message: types.Message, ad_id: str, user_id: int):
         ]
     )
     
-    if photo_id and photo_id != "None" and photo_id != "" and photo_id is not None:
+    if photo_id and photo_id not in ["None", "", None]:
         try:
             await message.answer_photo(
                 photo=photo_id,
@@ -527,7 +522,6 @@ async def process_field_edit(message: types.Message, state: FSMContext):
     # Yangilangan e'lonni ko'rsatish
     await show_ad_details(message, ad_id, user_id)
 
-# E'lonni saqlash funksiyasi (boshqa fayllardan chaqirish uchun)
 async def save_ad_to_db(user_id, ad_type, data_dict, photo_id):
     """E'lonni bazaga saqlash"""
     conn = sqlite3.connect('ijara_bot.db')
@@ -566,8 +560,6 @@ async def main() -> None:
     # Ma'lumotlar bazasini ishga tushirish
     init_database()
     
-    bot = Bot(token=TOKEN)
-    
     # Import qilingan routerlarni ulash
     try:
         from kvartira import router as kvartira_router
@@ -590,8 +582,9 @@ async def main() -> None:
     print("📋 E'lonlarim bo'limi faol")
     print("🖼 Rasm bilan ishlash yoqilgan")
     print("💾 Ma'lumotlar bazasi: ijara_bot.db")
+    
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
-    asyncio.run(main()) 
+    asyncio.run(main())
