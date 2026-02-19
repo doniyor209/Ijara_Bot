@@ -16,6 +16,12 @@ from buttons import (
     uy_hovli_qavat_button, tamir_button, vosita_button,
     number_button, create_price_keyboard
 )
+from aiogram.client.session.aiohttp import AiohttpSession
+
+
+PROXY_URL = 'http://proxy.server:3128'
+session = AiohttpSession(proxy=PROXY_URL)
+bot = Bot(token=TOKEN, session=session)
 
 TOKEN = "7945234223:AAGyNAwRf1Rg8RTyQoxyrI5yV9DiUF_ovdA"
 
