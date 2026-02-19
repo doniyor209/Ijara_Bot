@@ -9,6 +9,11 @@ from aiogram import F, types
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton, ReplyKeyboardRemove
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import StatesGroup, State
+from aiogram.client.session.aiohttp import AiohttpSession
+
+
+PROXY_URL = 'http://proxy.server:3128'
+session = AiohttpSession(proxy=PROXY_URL)
 
 from buttons import (
     user_menu, house_menu, k_v_menu, u_y_menu, humans_menu,
@@ -19,7 +24,7 @@ from buttons import (
 
 TOKEN = "7945234223:AAGyNAwRf1Rg8RTyQoxyrI5yV9DiUF_ovdA"
 
-bot = Bot(token=TOKEN)
+bot = Bot(token=TOKEN, session=session)
 dp = Dispatcher()
 
 # Ma'lumotlar bazasini yaratish
